@@ -22,8 +22,52 @@ export async function loadChinaGeo() {
   }
 }
 
-// 修复跨越反子午线的多边形
-function fixAntimeridian(geojson) {
+// 将坐标裁剪到 [-180, 180] 范围，并在反子午线处拆分多边形
+function clampLon(lon) {
+  while (lon > 180) lon -= 360;
+  while (lon < -180) lon += 360;
+  return lon;
+}
+
+// 检测并修复跨越反子午线的环
+function fixRing(ring) {
+  if (ring.length < 3) return [ring];
+
+  let hasCrossing = false;
+  for (let i = 0; i < ring.length - 1; i++) {
+    const lonDiff = Math.abs(ring[i + 1][0] - ring[i][0]);
+    if (lonDiff > 180) {
+      hasCrossing = true;
+      break;
+    }
+  }
+
+  // 没有跨越反子午线，直接返回
+  if (!hasCrossing) return [ring];
+
+  // 有跨越，将经度 < 0 的点移到 +360 使其连续
+  const adjusted = ring.map(([lon, lat]) => [lon < 0 ? lon + 360 : lon, lat]);
+
+  // 拆分为两个环：一个在 [0, 180]，一个在 [180, 360]
+  const leftRing = [];
+  const rightRing = [];
+
+  for (const [lon, lat] of adjusted) {
+    if (lon <= 180) {
+      leftRing.push([lon, lat]);
+    } else {
+      rightRing.push([lon - 360, lat]);
+    }
+  }
+
+  const result = [];
+  if (leftRing.length >= 3) result.push(leftRing);
+  if (rightRing.length >= 3) result.push(rightRing);
+  return result.length > 0 ? result : [ring];
+}
+
+// 修复 GeoJSON 中跨越反子午线的多边形
+function fixGeoAntimeridian(geojson) {
   if (!geojson || !geojson.features) return geojson;
 
   const newFeatures = [];
@@ -37,20 +81,39 @@ function fixAntimeridian(geojson) {
     const { type, coordinates } = feature.geometry;
 
     if (type === 'Polygon') {
-      const fixed = fixPolygon(coordinates);
+      const newRings = [];
+      coordinates.forEach((ring, idx) => {
+        if (idx === 0) {
+          // 外环可能需要拆分
+          const fixed = fixRing(ring);
+          fixed.forEach(r => newRings.push(r));
+        } else {
+          newRings.push(ring);
+        }
+      });
       newFeatures.push({
         ...feature,
-        geometry: { type: 'Polygon', coordinates: fixed }
+        geometry: { type: 'Polygon', coordinates: newRings }
       });
     } else if (type === 'MultiPolygon') {
-      const fixed = [];
+      const allPolygons = [];
       coordinates.forEach(polygon => {
-        const result = fixPolygon(polygon);
-        result.forEach(r => fixed.push(r));
+        const newRings = [];
+        polygon.forEach((ring, idx) => {
+          if (idx === 0) {
+            const fixed = fixRing(ring);
+            fixed.forEach(r => newRings.push([r]));
+          } else {
+            if (newRings.length > 0) {
+              newRings[newRings.length - 1].push(ring);
+            }
+          }
+        });
+        newRings.forEach(r => allPolygons.push(r));
       });
       newFeatures.push({
         ...feature,
-        geometry: { type: 'MultiPolygon', coordinates: fixed }
+        geometry: { type: 'MultiPolygon', coordinates: allPolygons }
       });
     } else {
       newFeatures.push(feature);
@@ -60,43 +123,16 @@ function fixAntimeridian(geojson) {
   return { ...geojson, features: newFeatures };
 }
 
-// 修复单个多边形中的反子午线跨越
-function fixPolygon(rings) {
-  return rings.map(ring => {
-    const newRing = [];
-    for (let i = 0; i < ring.length; i++) {
-      const curr = ring[i];
-      const next = ring[(i + 1) % ring.length];
-      newRing.push(curr);
-
-      // 检测经度跳跃超过180度的情况
-      const lonDiff = next[0] - curr[0];
-      if (Math.abs(lonDiff) > 180) {
-        // 在反子午线处插入裁剪点
-        const sign = lonDiff > 0 ? -1 : 1;
-        const latInterp = (curr[1] + next[1]) / 2;
-        newRing.push([sign * 180, latInterp]);
-        // 插入断开标记（用NaN分隔）
-        newRing.push([NaN, NaN]);
-        newRing.push([-sign * 180, latInterp]);
-      }
-    }
-    // 过滤掉NaN标记
-    return newRing.filter(p => !isNaN(p[0]) && !isNaN(p[1]));
-  });
-}
-
 export async function loadWorldGeo() {
   if (worldGeoCache) return worldGeoCache;
   try {
     const resp = await fetch(WORLD_GEO_URL);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const topoData = await resp.json();
-    // 动态导入topojson-client
     const topojson = await import('topojson-client');
     let geo = topojson.feature(topoData, topoData.objects.countries);
-    // 修复反子午线问题
-    geo = fixAntimeridian(geo);
+    // 修复反子午线跨越问题
+    geo = fixGeoAntimeridian(geo);
     worldGeoCache = geo;
     console.log('世界地图数据加载成功，国家数量:', worldGeoCache.features?.length);
     return worldGeoCache;
