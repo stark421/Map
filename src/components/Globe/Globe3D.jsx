@@ -8,7 +8,8 @@ import GridLines from './GridLines';
 import ScanLight from './ScanLight';
 import FlightLines from './FlightLines';
 import Ripples from './Ripples';
-import ChinaElevation from './ChinaElevation';
+import CountryBorders from './CountryBorders';
+import ChinaProvinces from './ChinaProvinces';
 
 // 加载中组件
 function LoadingFallback() {
@@ -92,7 +93,7 @@ export default function Globe3D({ onSwitchChina, onSwitchWorld }) {
         bottom: 20,
         left: 20,
         zIndex: 100,
-        background: 'rgba(0, 20, 40, 0.8)',
+        background: 'rgba(0, 20, 40, 0.85)',
         border: '1px solid rgba(0, 150, 255, 0.3)',
         borderRadius: '8px',
         padding: '15px',
@@ -103,10 +104,43 @@ export default function Globe3D({ onSwitchChina, onSwitchWorld }) {
         <div style={{ marginBottom: '8px', color: '#00aaff', fontWeight: 'bold' }}>
           地球可视化系统
         </div>
-        <div style={{ color: 'rgba(255,255,255,0.7)' }}>
+        <div style={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
           <div>鼠标拖拽：旋转地球</div>
           <div>滚轮：缩放视角</div>
           <div>右键拖拽：平移视角</div>
+        </div>
+      </div>
+
+      {/* 图例 */}
+      <div style={{
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        zIndex: 100,
+        background: 'rgba(0, 20, 40, 0.85)',
+        border: '1px solid rgba(0, 150, 255, 0.3)',
+        borderRadius: '8px',
+        padding: '12px 15px',
+        color: '#fff',
+        fontSize: 12,
+        backdropFilter: 'blur(10px)',
+      }}>
+        <div style={{ marginBottom: '6px', fontWeight: 'bold', color: '#00aaff' }}>图例</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <div style={{ width: 20, height: 2, background: '#00aaff' }} />
+          <span>国界线</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <div style={{ width: 20, height: 2, background: '#00ff88' }} />
+          <span>省界线</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <div style={{ width: 20, height: 2, background: '#00ffff', borderStyle: 'dashed' }} />
+          <span>国际航线</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00ffff' }} />
+          <span>城市节点</span>
         </div>
       </div>
 
@@ -121,7 +155,7 @@ export default function Globe3D({ onSwitchChina, onSwitchWorld }) {
       >
         <Suspense fallback={<LoadingFallback />}>
           {/* 灯光 */}
-          <ambientLight intensity={0.2} />
+          <ambientLight intensity={0.25} />
           <directionalLight
             position={[5, 3, 5]}
             intensity={1.5}
@@ -133,16 +167,19 @@ export default function Globe3D({ onSwitchChina, onSwitchWorld }) {
           <Stars />
 
           {/* 地球本体 + 云层 + 大气层 */}
-          <Earth>
-            {/* 中国3D高程 */}
-            <ChinaElevation />
-          </Earth>
+          <Earth />
+
+          {/* 世界国界线 */}
+          <CountryBorders />
+
+          {/* 中国省界线 */}
+          <ChinaProvinces />
 
           {/* 网格交点 */}
-          <GridLines />
+          <GridLines radius={10.02} opacity={0.15} />
 
           {/* 扫描光 */}
-          <ScanLight />
+          <ScanLight radius={10.12} />
 
           {/* 国际飞线 */}
           <FlightLines />
