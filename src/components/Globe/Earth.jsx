@@ -66,9 +66,9 @@ export default function Earth({ children }) {
 
     cities.forEach(([x, y]) => {
       const grad = ctx.createRadialGradient(x, y, 0, x, y, 12);
-      grad.addColorStop(0, 'rgba(255, 200, 100, 0.6)');
-      grad.addColorStop(0.5, 'rgba(255, 150, 50, 0.2)');
-      grad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+      grad.addColorStop(0, 'rgba(100, 180, 255, 0.5)');
+      grad.addColorStop(0.5, 'rgba(80, 150, 255, 0.2)');
+      grad.addColorStop(1, 'rgba(60, 120, 255, 0)');
       ctx.fillStyle = grad;
       ctx.fillRect(x - 12, y - 12, 24, 24);
     });
@@ -145,8 +145,8 @@ export default function Earth({ children }) {
         <meshPhongMaterial
           map={earthTexture}
           emissiveMap={emissiveTexture}
-          emissive={new THREE.Color(0xffaa44)}
-          emissiveIntensity={0.5}
+          emissive={new THREE.Color(0x4488ff)}
+          emissiveIntensity={0.3}
           specular={new THREE.Color(0x222222)}
           shininess={20}
         />

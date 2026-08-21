@@ -14,37 +14,52 @@ function latLonToVector3(lon, lat, radius) {
   );
 }
 
-// 涟漪效果组件
+// 计算球面上的朝向四元数 - 让物体法线指向球外
+function getSphereOrientation(position) {
+  const normal = position.clone().normalize();
+  const quaternion = new THREE.Quaternion();
+  // 默认的ringGeometry法线是 (0,0,1)，需要旋转到 normal 方向
+  quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+  return quaternion;
+}
+
+// 涟漪效果组件 - 贴合球面
 function RippleRing({ position, size, color = 0x00aaff, delay = 0 }) {
-  const ringRef = useRef();
+  const groupRef = useRef();
+  const ring1Ref = useRef();
   const ring2Ref = useRef();
   const ring3Ref = useRef();
-  
+
+  // 计算朝向
+  const orientation = useMemo(() => {
+    const pos = new THREE.Vector3(...position);
+    return getSphereOrientation(pos);
+  }, [position]);
+
   useFrame((state) => {
     const t = (state.clock.elapsedTime + delay) % 3;
-    const scale1 = 0.5 + t * 0.5;
-    const opacity1 = Math.max(0, 1 - t / 3);
-    
-    if (ringRef.current) {
-      ringRef.current.scale.setScalar(scale1 * size);
-      ringRef.current.material.opacity = opacity1 * 0.6;
+
+    if (ring1Ref.current) {
+      const scale1 = 0.3 + t * 0.4;
+      ring1Ref.current.scale.setScalar(scale1 * size);
+      ring1Ref.current.material.opacity = Math.max(0, 1 - t / 3) * 0.6;
     }
     if (ring2Ref.current) {
       const t2 = (t + 1) % 3;
-      const scale2 = 0.5 + t2 * 0.5;
+      const scale2 = 0.3 + t2 * 0.4;
       ring2Ref.current.scale.setScalar(scale2 * size);
       ring2Ref.current.material.opacity = Math.max(0, 1 - t2 / 3) * 0.4;
     }
     if (ring3Ref.current) {
       const t3 = (t + 2) % 3;
-      const scale3 = 0.5 + t3 * 0.5;
+      const scale3 = 0.3 + t3 * 0.4;
       ring3Ref.current.scale.setScalar(scale3 * size);
       ring3Ref.current.material.opacity = Math.max(0, 1 - t3 / 3) * 0.2;
     }
   });
 
   return (
-    <group position={position}>
+    <group position={position} quaternion={orientation}>
       {/* 中心点 */}
       <mesh>
         <sphereGeometry args={[0.03 * size, 8, 8]} />
@@ -55,9 +70,9 @@ function RippleRing({ position, size, color = 0x00aaff, delay = 0 }) {
           blending={THREE.AdditiveBlending}
         />
       </mesh>
-      
-      {/* 涟漪环 */}
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
+
+      {/* 涟漪环 - 已对齐球面法线 */}
+      <mesh ref={ring1Ref}>
         <ringGeometry args={[0.8, 1, 32]} />
         <meshBasicMaterial
           color={color}
@@ -68,8 +83,8 @@ function RippleRing({ position, size, color = 0x00aaff, delay = 0 }) {
           depthWrite={false}
         />
       </mesh>
-      
-      <mesh ref={ring2Ref} rotation={[-Math.PI / 2, 0, 0]}>
+
+      <mesh ref={ring2Ref}>
         <ringGeometry args={[0.8, 1, 32]} />
         <meshBasicMaterial
           color={color}
@@ -80,8 +95,8 @@ function RippleRing({ position, size, color = 0x00aaff, delay = 0 }) {
           depthWrite={false}
         />
       </mesh>
-      
-      <mesh ref={ring3Ref} rotation={[-Math.PI / 2, 0, 0]}>
+
+      <mesh ref={ring3Ref}>
         <ringGeometry args={[0.8, 1, 32]} />
         <meshBasicMaterial
           color={color}
@@ -99,10 +114,10 @@ function RippleRing({ position, size, color = 0x00aaff, delay = 0 }) {
 // 常态涟漪组件
 export default function Ripples() {
   const groupRef = useRef();
-  
+
   const cities = useMemo(() => {
     return rippleCities.map((city, i) => ({
-      position: latLonToVector3(city.position[0], city.position[1], 10.02),
+      position: latLonToVector3(city.position[0], city.position[1], 10.02).toArray(),
       size: city.size,
       delay: i * 0.3,
       name: city.name,
