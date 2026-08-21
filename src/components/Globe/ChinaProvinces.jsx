@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Line } from '@react-three/drei';
-import * as THREE from 'three';
+import { loadChinaGeo } from '../../data/geoLoader';
 
 // 经纬度转3D球面坐标
 function latLonToVector3(lon, lat, radius) {
@@ -18,21 +18,17 @@ function latLonToVector3(lon, lat, radius) {
 export default function ChinaProvinces() {
   const groupRef = useRef();
   const [geoData, setGeoData] = useState(null);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
+    loadChinaGeo()
       .then(data => {
-        console.log('中国地图数据加载成功，省份数量:', data.features?.length);
-        setGeoData(data);
+        if (data) {
+          console.log('中国省界: 数据加载成功');
+          setGeoData(data);
+        }
       })
       .catch(err => {
-        console.error('加载中国地图失败:', err);
-        setError(err.message);
+        console.error('中国省界: 加载失败', err);
       });
   }, []);
 
@@ -69,7 +65,7 @@ export default function ChinaProvinces() {
       }
     });
 
-    console.log('中国省界线段数量:', lines.length);
+    console.log('中国省界: 线段数量', lines.length);
     return lines;
   }, [geoData]);
 
@@ -78,11 +74,6 @@ export default function ChinaProvinces() {
       groupRef.current.rotation.y += delta * 0.02;
     }
   });
-
-  if (error) {
-    console.warn('中国省界组件错误:', error);
-    return null;
-  }
 
   if (lineData.length === 0) return null;
 
