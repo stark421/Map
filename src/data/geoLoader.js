@@ -66,13 +66,18 @@ function fixRing(ring) {
   return result.length > 0 ? result : [ring];
 }
 
-// 修复 GeoJSON 中跨越反子午线的多边形
+// 修复 GeoJSON 中跨越反子午线的多边形，并过滤南极洲
 function fixGeoAntimeridian(geojson) {
   if (!geojson || !geojson.features) return geojson;
+
+  // 南极洲 id = "010"，在等矩形投影下严重变形，过滤掉
+  const SKIP_IDS = new Set(['010']);
 
   const newFeatures = [];
 
   geojson.features.forEach(feature => {
+    // 跳过南极洲
+    if (SKIP_IDS.has(feature.id)) return;
     if (!feature.geometry) {
       newFeatures.push(feature);
       return;
