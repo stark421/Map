@@ -43,39 +43,6 @@ export default function Earth({ children }) {
     return new THREE.CanvasTexture(canvas);
   }, []);
 
-  // 发光纹理 - 城市灯光
-  const emissiveTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = 'rgba(0,0,0,0)';
-    ctx.fillRect(0, 0, 1024, 512);
-
-    // 城市灯光点
-    const cities = [
-      [512, 256], [520, 260], [530, 255], // 中国
-      [540, 250], [545, 255], // 韩国/日本
-      [180, 200], [175, 205], // 北美东海岸
-      [140, 210], // 北美西海岸
-      [510, 180], [515, 185], // 欧洲
-      [560, 280], [570, 275], // 东南亚
-      [530, 280], // 南亚
-    ];
-
-    cities.forEach(([x, y]) => {
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, 12);
-      grad.addColorStop(0, 'rgba(100, 180, 255, 0.5)');
-      grad.addColorStop(0.5, 'rgba(80, 150, 255, 0.2)');
-      grad.addColorStop(1, 'rgba(60, 120, 255, 0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(x - 12, y - 12, 24, 24);
-    });
-
-    return new THREE.CanvasTexture(canvas);
-  }, []);
-
   // 云层纹理
   const cloudTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
@@ -144,9 +111,6 @@ export default function Earth({ children }) {
         <sphereGeometry args={[10, 64, 64]} />
         <meshPhongMaterial
           map={earthTexture}
-          emissiveMap={emissiveTexture}
-          emissive={new THREE.Color(0x4488ff)}
-          emissiveIntensity={0.3}
           specular={new THREE.Color(0x222222)}
           shininess={20}
         />
